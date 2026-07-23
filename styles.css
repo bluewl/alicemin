@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'VT323', monospace;
+    background: #2a2a2a;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #4a210d;
+    overflow: hidden;
+    cursor: url('https://stardewvalleywiki.com/mediawiki/images/1/1b/Cursor.png'), auto;
+}
+
+canvas, a, button, .sv-item-slot, #game-container {
+    cursor: url('https://stardewvalleywiki.com/mediawiki/images/1/1b/Cursor.png'), pointer !important;
+}
+
+#game-container {
+    position: relative;
+    width: 800px;
+    height: 450px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    background: #000;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+/* Stardew Dialogue Box */
+#dialog-box {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 160px;
+    background: #fff0ba; /* Cream dialogue background */
+    border: 6px solid #d37346; /* Outer orange/brown border */
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 4px #eab67c, 0 10px 0 rgba(0,0,0,0.3), 0 0 0 6px #6a341b; 
+    display: flex;
+    z-index: 100;
+    padding: 15px;
+}
+
+#dialog-box.hidden {
+    display: none;
+}
+
+.portrait-container {
+    width: 120px;
+    height: 120px;
+    border: 4px solid #b86214;
+    background: #8ec0d8;
+    margin-right: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    border-radius: 4px;
+}
+
+#portraitCanvas {
+    width: 120px;
+    height: 120px;
+    image-rendering: pixelated;
+}
+
+.dialog-wrap {
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+#dialog-name {
+    font-size: 1.8rem;
+    color: #d37346;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 0 #fff;
+}
+
+#dialog-text {
+    font-size: 1.6rem;
+    color: #5e290f;
+    line-height: 1.2;
+}
+
+#dialog-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    font-size: 1.5rem;
+    color: #d37346;
+    animation: bounceIndicator 0.8s infinite;
+}
+
+#dialog-indicator.hidden {
+    display: none;
+}
+
+@keyframes bounceIndicator {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+#controls-hint {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 1.2rem;
+    text-shadow: 2px 2px 0 #000;
+    z-index: 10;
+}

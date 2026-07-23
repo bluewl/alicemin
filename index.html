@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday Alice!</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="450"></canvas>
+        
+        <div id="dialog-box" class="hidden">
+            <div class="portrait-container">
+                <canvas id="portraitCanvas" width="120" height="120"></canvas>
+            </div>
+            <div class="dialog-wrap">
+                <div id="dialog-name">Paul</div>
+                <div id="dialog-text"></div>
+                <div id="dialog-indicator" class="hidden">▼</div>
+            </div>
+        </div>
+        
+        <div id="controls-hint">
+            <strong>Controls:</strong> WASD/Arrows to Move • SPACE to Interact/Next
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

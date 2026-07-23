@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Present!</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="letter-box present-reveal">
+        <div id="typewriter-text" class="letter-text"></div>
+        
+        <div class="letter-attachment" style="display: none; text-align: center; margin-top: 2rem;">
+            <p style="font-size: 1.5rem; color: #4a210d; margin-bottom: 10px;">(Click to accept item)</p>
+            <a href="index.html" class="sv-item-slot">
+                <!-- Using 72x144 keeps the 1:2 ratio but fits properly in the slot! -->
+                <img src="https://stardewvalleywiki.com/mediawiki/images/7/74/House_Plant_10.png" alt="Stardew Valley House Plant 10" style="width: 72px; height: 144px; image-rendering: pixelated; margin-bottom: 5px;">
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        // Stardew-style text typewriter effect
+        const text = "Dear Alice,\n\nHappy Birthday!\n\nI heard you are moving to a new condo soon.\n\nI wanted to get you a beautiful indoor plant for your new home. Since you're still packing, this item will spawn once you are settled in.\n\nLet's head to Pierre's General Store to pick it out later!\n\n - A Fellow Villager";
+        const letterContainer = document.getElementById("typewriter-text");
+        let charIndex = 0;
+        
+        function typeWriter() {
+            if (charIndex < text.length) {
+                if (text.charAt(charIndex) === '\n') {
+                    letterContainer.innerHTML += '<br>';
+                } else {
+                    letterContainer.innerHTML += text.charAt(charIndex);
+                }
+                charIndex++;
+                setTimeout(typeWriter, Math.random() * 20 + 30); // 30-50ms typing speed
+            } else {
+                document.querySelector('.letter-attachment').style.display = 'block';
+            }
+        }
+
+        // Delay typing slightly so it doesn't start before the page fully renders
+        setTimeout(typeWriter, 500);
+
+        // Stardew-style star confetti effect
+        for (let i = 0; i < 30; i++) {
+            createConfetti();
+        }
+
+        function createConfetti() {
+            const confetti = document.createElement('div');
+            confetti.classList.add('confetti');
+            confetti.innerHTML = '✨';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+            
+            document.body.appendChild(confetti);
+        }
+    </script>
+</body>
+</html>
