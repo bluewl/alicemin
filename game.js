@@ -11,24 +11,41 @@ const pCtx = portraitCanvas.getContext('2d');
 const keys = {
     ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
     w: false, a: false, s: false, d: false,
-    ' ': false, Enter: false
+    ' ': false, Enter: false, Escape: false
 };
 
 let mouseClicked = false;
 window.addEventListener('click', () => {
     mouseClicked = true;
+    if (!musicStarted) {
+        bgm.play().catch(e => console.log("Audio play failed:", e));
+        musicStarted = true;
+    }
 });
 
 window.addEventListener('keydown', (e) => {
-    if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+    let key = e.key;
+    if (['W', 'A', 'S', 'D'].includes(key)) key = key.toLowerCase();
+    if (keys.hasOwnProperty(key)) keys[key] = true;
+    
+    // Start music on any keypress if not already started (fallback for autoplay block)
+    if (!musicStarted) {
+        bgm.play().catch(e => console.log("Audio play failed:", e));
+        musicStarted = true;
+    }
 });
 window.addEventListener('keyup', (e) => {
-    if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+    let key = e.key;
+    if (['W', 'A', 'S', 'D'].includes(key)) key = key.toLowerCase();
+    if (keys.hasOwnProperty(key)) keys[key] = false;
 });
 
 // Game state
-let gameState = 'waiting_to_start'; // 'waiting_to_start', 'init', 'intro_emote', 'paul_entering', 'playing', 'dialog'
+let gameState = 'playing'; // 'playing', 'init', 'intro_emote', 'paul_entering', 'dialog'
 let introStartTime = Date.now();
+let firstMoveTime = 0;
+let hasMoved = false;
+let knockTriggered = false;
 
 // Asset Loading
 const assets = {
@@ -37,6 +54,20 @@ const assets = {
 
 let assetsLoaded = 0;
 const totalAssets = 1;
+
+// Background Music
+const bgm = document.getElementById('bgMusic');
+bgm.volume = 0.2; // low volume for background
+
+// Notice: We removed the event-listener-based play calls because we added 'autoplay' to the HTML tag. 
+// However, note that many browsers strictly block autoplaying audio unless it's muted or there's user interaction.
+let musicStarted = false;
+
+// Sound Effects
+const doorCloseSfx = new Audio('assets/sound/doorClose.wav');
+doorCloseSfx.volume = 0.5;
+const emoteSfx = new Audio('assets/sound/newArtifact.wav');
+emoteSfx.volume = 0.5;
 
 function assetLoaded() {
     assetsLoaded++;
@@ -90,9 +121,9 @@ const introDialogs = [
 ];
 
 const paulDialogs = [
-    { speaker: 'Paul', text: "Happy Birthday!" },
+    { speaker: 'Paul', text: "Happy 28th Birthday!!!" },
     { speaker: 'Paul', text: "I heard you are moving to a new condo soon." },
-    { speaker: 'Paul', text: "I wanted to get you a beautiful indoor plant for your new home." },
+    { speaker: 'Paul', text: "Andrew, Brian, and I wanted to get you a beautiful tree for your new home." },
     { speaker: 'Paul', text: "Since you're still packing, this item will spawn once you are settled in." },
     { speaker: 'Paul', text: "Let's head to Pierre's General Store to pick it out later!" }
 ];
@@ -127,7 +158,7 @@ const tvDialogues = [
 ];
 
 const bedDialog = [
-    { speaker: '', text: "sleep is for the weak..." }
+    { speaker: '', text: "This is where Alice sleeps." }
 ];
 
 let activeDialogs = [];
@@ -137,6 +168,10 @@ let isTyping = false;
 let typeInterval;
 let spaceWasPressed = false;
 let lastTvIndex = -1;
+let nextBirdTime = Date.now() + 5000 + Math.random() * 3000;
+let isBirdFlying = false;
+let currentBirdStartTime = 0;
+let lastDialogEndTime = 0;
 
 // Drawing functions
 function drawCharacter(c, isPlayer) {
@@ -286,32 +321,39 @@ function drawEmote(c) {
     if (time < 200) bounce = - (time/200)*10;
     else if (time < 400) bounce = -10 + ((time-200)/200)*10;
     
-    const ex = c.x + 12;
-    const ey = c.y - 35 + bounce;
+    const ex = c.x + 16;
+    const ey = c.y - 36 + bounce;
     
-    // Bubble
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(ex + 12, ey + 12, 16, 18, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Border
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.save();
     
-    // Bubble tail
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.moveTo(ex + 12, ey + 28);
-    ctx.lineTo(ex + 6, ey + 38);
-    ctx.lineTo(ex + 18, ey + 26);
-    ctx.fill();
-    ctx.stroke();
+    // Pixel art style bubble outline (black)
+    ctx.fillStyle = '#111';
+    ctx.fillRect(ex - 2, ey - 2, 20, 20); // base outer
+    ctx.fillRect(ex, ey - 4, 16, 24); // vertical outer
+    ctx.fillRect(ex - 4, ey, 24, 16); // horizontal outer
     
-    // ! Red Symbol
+    // Bubble tail outline
+    ctx.fillRect(ex + 6, ey + 16, 6, 4);
+    ctx.fillRect(ex + 4, ey + 18, 6, 4);
+    ctx.fillRect(ex + 2, ey + 20, 6, 4);
+
+    // Inner white bubble
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(ex, ey, 16, 16);
+    ctx.fillRect(ex + 2, ey - 2, 12, 20);
+    ctx.fillRect(ex - 2, ey + 2, 20, 12);
+    
+    // Tail inner
+    ctx.fillRect(ex + 6, ey + 16, 2, 2);
+    ctx.fillRect(ex + 4, ey + 18, 2, 2);
+    ctx.fillRect(ex + 2, ey + 20, 2, 2);
+
+    // Red Exclamation Mark !
     ctx.fillStyle = '#ff1d15';
-    ctx.fillRect(ex + 10, ey + 2, 4, 12);
-    ctx.fillRect(ex + 10, ey + 18, 4, 4);
+    ctx.fillRect(ex + 6, ey + 2, 4, 8); // Top line
+    ctx.fillRect(ex + 6, ey + 12, 4, 4); // Dot
+    
+    ctx.restore();
 }
 
 function drawPortrait(speaker) {
@@ -473,22 +515,63 @@ function drawBackground() {
     ctx.fillRect(300, 240, 200, 120);
     ctx.fillStyle = '#c74e4e';
     ctx.fillRect(310, 250, 180, 100);
-    ctx.strokeStyle = '#e8c15a';
+    ctx.strokeStyle = '#e3a812';
     ctx.lineWidth = 4;
     ctx.strokeRect(302, 242, 196, 116);
     ctx.strokeRect(314, 254, 172, 92);
 
-    // Window (Back Left)
+    // Window (Back Right)
+    const wx = 540;
     ctx.fillStyle = '#593218'; // Frame
-    ctx.fillRect(200, ry + 20, 60, 60);
+    ctx.fillRect(wx, ry + 20, 60, 60);
     ctx.fillStyle = '#9cd9f7'; // Glass bright blue
-    ctx.fillRect(204, ry + 24, 24, 24);
-    ctx.fillRect(232, ry + 24, 24, 24);
-    ctx.fillRect(204, ry + 52, 24, 24);
-    ctx.fillRect(232, ry + 52, 24, 24);
-    ctx.fillStyle = '#fff'; // glare
-    ctx.fillRect(208, ry + 28, 8, 8);
-    ctx.fillRect(236, ry + 28, 8, 8);
+    ctx.fillRect(wx + 4, ry + 24, 24, 24);
+    ctx.fillRect(wx + 32, ry + 24, 24, 24);
+    ctx.fillRect(wx + 4, ry + 52, 24, 24);
+    ctx.fillRect(wx + 32, ry + 52, 24, 24);
+    
+    // Draw bird occasionally passing by
+    const now = Date.now();
+    if (!isBirdFlying && now > nextBirdTime) {
+        isBirdFlying = true;
+        currentBirdStartTime = now;
+    }
+
+    if (isBirdFlying) {
+        const flyDuration = 5000;
+        const timeFlying = now - currentBirdStartTime;
+        if (timeFlying < flyDuration) {
+            const birdProgress = timeFlying / flyDuration;
+            const bX = wx + 60 - (birdProgress * 120); // moving right to left
+            const bY = ry + 40;
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(wx, ry + 20, 60, 60);
+            ctx.clip();
+
+            ctx.fillStyle = '#222';
+            ctx.beginPath();
+            // Simple V shape for bird
+            const wingFlap = Math.sin(birdProgress * Math.PI * 20) * 4;
+            ctx.moveTo(bX, bY);
+            ctx.lineTo(bX + 6, bY - 4 + wingFlap);
+            ctx.lineTo(bX + 4, bY);
+            ctx.lineTo(bX + 8, bY - 4 + wingFlap);
+            ctx.lineTo(bX + 6, bY + 2);
+            ctx.fill();
+            
+            ctx.restore();
+        } else {
+            isBirdFlying = false;
+            nextBirdTime = now + 3000 + Math.random() * 3000;
+        }
+    }
+
+    ctx.shadowBlur = 0; // Turn off glow for the glare details
+    ctx.fillStyle = '#ffffff'; // glare
+    ctx.fillRect(wx + 8, ry + 28, 8, 8);
+    ctx.fillRect(wx + 36, ry + 28, 8, 8);
 
     // Fireplace (Top-Mid)
     const fx = 360, fy = ry + 20;
@@ -526,10 +609,62 @@ function drawBackground() {
     ctx.fillRect(146, ry + 60, 68, 50);
     ctx.fillStyle = '#222';
     ctx.fillRect(154, ry + 68, 52, 34); // Bezel
-    ctx.fillStyle = '#3a4a58'; // Screen Dark
-    ctx.fillRect(158, ry + 72, 44, 26);
-    ctx.fillStyle = '#7b95a8'; // Screen highlight
-    ctx.fillRect(162, ry + 76, 8, 8);
+    
+    const isTvPlaying = (gameState === 'dialog' && tvDialogues.includes(activeDialogs));
+    
+    if (isTvPlaying) {
+        const tvTime = Date.now();
+        // Flickering active screen
+        ctx.fillStyle = (Math.floor(tvTime / 150) % 2 === 0) ? '#8ab0ab' : '#9bc2bc';
+        ctx.fillRect(158, ry + 72, 44, 26);
+    } else {
+        ctx.fillStyle = '#3a4a58'; // Screen Dark
+        ctx.fillRect(158, ry + 72, 44, 26);
+        ctx.fillStyle = '#7b95a8'; // Screen highlight
+        ctx.fillRect(162, ry + 76, 8, 8);
+    }
+
+    // Portrait Frame (Alice and Brian)
+    const px = 250, py = ry + 25; 
+    // Frame Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(px + 2, py + 2, 60, 50);
+    // Frame Border
+    ctx.fillStyle = '#3a1f0f';
+    ctx.fillRect(px, py, 60, 50);
+    ctx.fillStyle = '#d39922'; // Gold inline
+    ctx.fillRect(px + 2, py + 2, 56, 46);
+    // Matting
+    ctx.fillStyle = '#f0ecd8';
+    ctx.fillRect(px + 4, py + 4, 52, 42);
+    // Photo Background
+    ctx.fillStyle = '#a8e1ff'; // sky
+    ctx.fillRect(px + 6, py + 6, 48, 24);
+    ctx.fillStyle = '#8dc45c'; // grass
+    ctx.fillRect(px + 6, py + 30, 48, 14);
+    // Brian (Groom)
+    ctx.fillStyle = '#111'; // black suit
+    ctx.fillRect(px + 16, py + 26, 10, 16);
+    ctx.fillStyle = '#fff'; // shirt peaking
+    ctx.fillRect(px + 19, py + 26, 2, 6);
+    ctx.fillStyle = '#ffccaa'; // face
+    ctx.fillRect(px + 18, py + 18, 6, 8);
+    ctx.fillStyle = '#222'; // short hair
+    ctx.fillRect(px + 17, py + 16, 8, 4);
+    ctx.fillRect(px + 23, py + 18, 2, 4); // side fringe
+    // Alice (Bride)
+    ctx.fillStyle = '#fff'; // White wedding dress
+    ctx.beginPath();
+    ctx.moveTo(px + 36, py + 26);
+    ctx.lineTo(px + 42, py + 42);
+    ctx.lineTo(px + 30, py + 42);
+    ctx.fill();
+    ctx.fillStyle = '#ffccaa'; // face
+    ctx.fillRect(px + 33, py + 18, 6, 8);
+    ctx.fillStyle = '#111'; // dark elegant hair
+    ctx.fillRect(px + 32, py + 16, 8, 4); // top
+    ctx.fillRect(px + 32, py + 20, 2, 10); // left drape
+    ctx.fillRect(px + 38, py + 20, 2, 10); // right drape
 
     // Bed (Top Right)
     const bx = 550, by = ry + 90;
@@ -628,10 +763,12 @@ function showDialogText() {
     
     if (currentSpeaker === '') {
         dialogName.innerText = '???';
-        document.getElementById('portraitCanvas').style.display = 'none';
+        document.querySelector('.portrait-container').style.display = 'none';
         pCtx.clearRect(0, 0, 120, 120);
     } else {
         dialogName.innerText = currentSpeaker;
+        const portraitContainer = document.querySelector('.portrait-container');
+        if (portraitContainer) portraitContainer.style.display = 'flex';
         document.getElementById('portraitCanvas').style.display = 'block';
         drawPortrait(currentSpeaker);
     }
@@ -675,8 +812,11 @@ function advanceDialog() {
                 gameState = 'intro_emote';
                 player.facing = 'down'; // Face down during the exclamation point reaction
                 introStartTime = Date.now();
+                emoteSfx.currentTime = 0;
+                emoteSfx.play().catch(e => console.log("SFX play failed:", e));
             } else {
                 gameState = 'playing';
+                lastDialogEndTime = Date.now();
                 if (currentSpeaker === 'Paul' && npc.visible) {
                     npc.facing = 'down';
                 }
@@ -697,13 +837,22 @@ function getDirectionToPlayer() {
 
 function checkInteractions() {
     // Bed Interaction Zone
-    if (player.x > 480 && player.y > 100 && player.y < 280 && player.facing === 'right') {
-        startDialog([{ speaker: '', text: "sleep is for the weak..." }]);
+    if (player.x > 480 && player.y > 100 && player.y < 280 && (player.facing === 'right' || player.facing === 'up')) {
+        startDialog([
+            { speaker: '', text: "This is where Alice sleeps." },
+            { speaker: '', text: "Alarms are useless here..." }
+        ]);
+        return;
+    }
+
+    // Portrait Interaction Zone
+    if (player.x > 230 && player.x < 320 && player.y > 100 && player.y < 160 && player.facing === 'up') {
+        startDialog([{ speaker: '', text: "A beautiful wedding photo of Alice and Brian." }]);
         return;
     }
 
     // TV Interaction Zone
-    if (player.x < 260 && player.y > 100 && player.y < 220 && player.facing === 'left') {
+    if (player.x < 260 && player.y > 100 && player.y < 220 && (player.facing === 'left' || player.facing === 'up')) {
         let newTvIndex = Math.floor(Math.random() * tvDialogues.length);
         // Ensure we don't repeat the same dialogue twice in a row
         while (newTvIndex === lastTvIndex && tvDialogues.length > 1) {
@@ -718,11 +867,22 @@ function checkInteractions() {
     if (!npc.visible) {
         // Door interaction zone
         if (player.y > 300 && player.x > 320 && player.x < 480) {
-            npc.visible = true;
-            npc.x = 376;
-            npc.y = 410; // Start off-screen
-            npc.facing = 'up';
-            gameState = 'paul_entering';
+            if (knockTriggered) {
+                npc.visible = true;
+                npc.x = 376;
+                npc.y = 410; // Start off-screen
+                npc.facing = 'up';
+                gameState = 'paul_entering';
+                
+                // Play sound right before Paul starts moving in
+                doorCloseSfx.currentTime = 0;
+                doorCloseSfx.play().catch(e => console.log("SFX play failed:", e));
+            } else {
+                startDialog([
+                    { speaker: 'Alice', text: "I don't think that's a good idea..." },
+                    { speaker: 'Alice', text: "I should look around the house first!" }
+                ]);
+            }
         }
     } else {
         // Check distance between player and npc centers
@@ -735,11 +895,18 @@ function checkInteractions() {
 
 // Game Loop
 function update() {
-    const spacePressed = keys[' '] || keys['Enter'] || mouseClicked;
+    const interactPressed = keys[' '] || keys['Enter'] || mouseClicked;
+    const advancePressed = interactPressed || keys['Escape'];
     const isMoveKey = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight || keys.w || keys.a || keys.s || keys.d;
 
-    if (gameState === 'waiting_to_start') {
-        if (isMoveKey || mouseClicked) {
+    if (gameState === 'playing' && !hasMoved && isMoveKey) {
+        hasMoved = true;
+        firstMoveTime = Date.now();
+    }
+
+    if (hasMoved && !knockTriggered && Date.now() - firstMoveTime >= 10000) {
+        if (gameState === 'playing' && Date.now() - lastDialogEndTime >= 1000) {
+            knockTriggered = true;
             gameState = 'init';
         }
     }
@@ -796,12 +963,14 @@ function update() {
         }
         
         // Fireplace (Top mid)
-        if (player.x + player.width > 350 && player.x < 460 && player.y < 160) {
+        if (player.x + player.width > 350 && player.x < 460 && player.y < 140) {
             if (keys.ArrowUp || keys.w) player.y += player.speed;
+            if (keys.ArrowLeft || keys.a) player.x += player.speed;
+            if (keys.ArrowRight || keys.d) player.x -= player.speed;
         }
 
         // TV (Left wall)
-        if (player.x < 220 && player.y < 120) {
+        if (player.x < 230 && player.y < 140) {
             if (keys.ArrowUp || keys.w) player.y += player.speed;
             if (keys.ArrowLeft || keys.a) player.x += player.speed;
         }
@@ -818,17 +987,17 @@ function update() {
         }
 
         // Interaction
-        if (spacePressed && !spaceWasPressed) {
+        if (interactPressed && !spaceWasPressed) {
             checkInteractions();
         }
     } else if (gameState === 'dialog') {
         player.isMoving = false;
-        if (spacePressed && !spaceWasPressed) {
+        if (advancePressed && !spaceWasPressed) {
             advanceDialog();
         }
     }
     
-    spaceWasPressed = spacePressed;
+    spaceWasPressed = advancePressed;
     mouseClicked = false;
 }
 
