@@ -97,12 +97,46 @@ const paulDialogs = [
     { speaker: 'Paul', text: "Let's head to Pierre's General Store to pick it out later!" }
 ];
 
+const tvDialogues = [
+    [
+        { speaker: '수지', text: "정윤아, 솔직히 말하면 우리 둘은 잘 안 맞는 것 같아." },
+        { speaker: '정윤', text: "갑자기 왜 그렇게 생각해?" },
+        { speaker: '수지', text: "너랑 있으면 너무 조용하고, 대화도 재미가 없어." },
+        { speaker: '정윤', text: "내가 너무 지루하다는 거야?" },
+        { speaker: '수지', text: "응. 미안하지만, 나한테는 네가 너무 재미없는 것 같아." },
+        { speaker: '정윤', text: "알겠어. 솔직하게 말해 줘서 고마워." }
+    ],
+    [
+        { speaker: '현서', text: "아까 사람들 앞에서 왜 그렇게 말했어? 나 진짜 불편했어." },
+        { speaker: '혁준', text: "너도 나한테 헷갈리게 행동했잖아." },
+        { speaker: '현서', text: "잘해 준 게 좋아한다는 뜻은 아니야." },
+        { speaker: '혁준', text: "그럼 솔직히 말해. 나한테 마음 있어, 없어?" },
+        { speaker: '현서', text: "지금은 대답하고 싶지 않아." },
+        { speaker: '혁준', text: "알겠어. 그럼 나도 이제 그만할게." }
+    ],
+    [
+        { speaker: '재서', text: "여기 앉아도 돼요?" },
+        { speaker: '서윤', text: "네, 당연하죠. 그런데 오늘은 평소보다 말이 별로 없으시네요." },
+        { speaker: '재서', text: "사실 서윤 씨 앞에만 오면 무슨 말을 해야 할지 모르겠어요." },
+        { speaker: '서윤', text: "왜요? 저 불편해요?" },
+        { speaker: '재서', text: "아니요. 오히려 반대예요. 잘 보이고 싶은데, 연애 경험이 없어서 자꾸 긴장하게 돼요." },
+        { speaker: '서윤', text: "저도 그래요. 그래서 우리 둘 다 천천히 하면 되지 않을까요?" },
+        { speaker: '재서', text: "그럼… 내일 데이트도 저랑 해 주실래요?" },
+        { speaker: '서윤', text: "네. 내일은 오늘보다 조금 더 편하게 이야기해 봐요." }
+    ]
+];
+
+const bedDialog = [
+    { speaker: '', text: "sleep is for the weak..." }
+];
+
 let activeDialogs = [];
 let currentDialogIndex = 0;
 let currentSpeaker = '';
 let isTyping = false;
 let typeInterval;
 let spaceWasPressed = false;
+let lastTvIndex = -1;
 
 // Drawing functions
 function drawCharacter(c, isPlayer) {
@@ -334,7 +368,7 @@ function drawPortrait(speaker) {
         // Bangs swooping
         pCtx.fillRect(16, 16, 18, 6);
         
-    } else {
+    } else if (speaker === 'Paul') {
         // Paul - Handsome, clean elegant dark K-Pop style
         // Sharp black/dark grey suit/jacket
         pCtx.fillStyle = '#111'; // black inner shirt/turtleneck
@@ -364,6 +398,15 @@ function drawPortrait(speaker) {
         pCtx.fillRect(12, 16, 10, 14); // Swooping bangs left
         pCtx.fillRect(34, 16, 12, 12); // Right side
         pCtx.fillRect(24, 12, 6, 12);  // Center parted strand
+    } else {
+        // Generic Portrait for TV characters
+        pCtx.fillStyle = '#7b95a8'; // Screen static/glow background
+        pCtx.fillRect(10, 10, 40, 40);
+        
+        // Simple silhouette
+        pCtx.fillStyle = '#222';
+        pCtx.fillRect(20, 20, 20, 20); // face
+        pCtx.fillRect(16, 40, 28, 20); // body
     }
 
     pCtx.restore();
@@ -652,7 +695,26 @@ function getDirectionToPlayer() {
     }
 }
 
-function checkNPCInteraction() {
+function checkInteractions() {
+    // Bed Interaction Zone
+    if (player.x > 480 && player.y > 100 && player.y < 280 && player.facing === 'right') {
+        startDialog([{ speaker: '', text: "sleep is for the weak..." }]);
+        return;
+    }
+
+    // TV Interaction Zone
+    if (player.x < 260 && player.y > 100 && player.y < 220 && player.facing === 'left') {
+        let newTvIndex = Math.floor(Math.random() * tvDialogues.length);
+        // Ensure we don't repeat the same dialogue twice in a row
+        while (newTvIndex === lastTvIndex && tvDialogues.length > 1) {
+            newTvIndex = Math.floor(Math.random() * tvDialogues.length);
+        }
+        lastTvIndex = newTvIndex;
+        startDialog(tvDialogues[newTvIndex]);
+        return;
+    }
+
+    // Door / Paul interactions
     if (!npc.visible) {
         // Door interaction zone
         if (player.y > 300 && player.x > 320 && player.x < 480) {
@@ -739,7 +801,7 @@ function update() {
         }
 
         // TV (Left wall)
-        if (player.x < 220 && player.y < 170) {
+        if (player.x < 220 && player.y < 120) {
             if (keys.ArrowUp || keys.w) player.y += player.speed;
             if (keys.ArrowLeft || keys.a) player.x += player.speed;
         }
@@ -757,7 +819,7 @@ function update() {
 
         // Interaction
         if (spacePressed && !spaceWasPressed) {
-            checkNPCInteraction();
+            checkInteractions();
         }
     } else if (gameState === 'dialog') {
         player.isMoving = false;
