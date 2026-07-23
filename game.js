@@ -68,6 +68,8 @@ const doorCloseSfx = new Audio('assets/sound/doorClose.wav');
 doorCloseSfx.volume = 0.5;
 const emoteSfx = new Audio('assets/sound/newArtifact.wav');
 emoteSfx.volume = 0.5;
+const knockSfx = new Audio('assets/sound/doorKnock.mp3');
+knockSfx.volume = 0.8;
 
 function assetLoaded() {
     assetsLoaded++;
@@ -121,7 +123,7 @@ const introDialogs = [
 ];
 
 const paulDialogs = [
-    { speaker: 'Paul', text: "Happy 28th Birthday!!!" },
+    { speaker: 'Paul', text: "Happy 28th Birthday!" },
     { speaker: 'Paul', text: "I heard you are moving to a new condo soon." },
     { speaker: 'Paul', text: "Andrew, Brian, and I wanted to get you a beautiful tree for your new home." },
     { speaker: 'Paul', text: "Since you're still packing, this item will spawn once you are settled in." },
@@ -904,10 +906,12 @@ function update() {
         firstMoveTime = Date.now();
     }
 
-    if (hasMoved && !knockTriggered && Date.now() - firstMoveTime >= 10000) {
+    if (hasMoved && !knockTriggered && Date.now() - firstMoveTime >= 15000) {
         if (gameState === 'playing' && Date.now() - lastDialogEndTime >= 1000) {
             knockTriggered = true;
             gameState = 'init';
+            knockSfx.currentTime = 0;
+            knockSfx.play().catch(e => console.log("SFX play failed:", e));
         }
     }
 
